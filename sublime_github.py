@@ -473,7 +473,8 @@ if git:
             absolute_path = absolute_path.replace('\\', '/')
             # we case-insensitive split because Windows
             # relative_path = re.split(re.escape(self.toplevel_path), absolute_path, re.IGNORECASE).pop()
-            relative_path = absolute_path.replace(self.toplevel_path, '');
+            # relative_path = absolute_path.replace(self.toplevel_path, '');
+            relative_path = absolute_path;
 
             line_nums = ""
             if self.allows_line_highlights:
