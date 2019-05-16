@@ -1,17 +1,14 @@
-"""
-SublimeGitHub commands
-"""
 import os
-import os.path
 import sys
+import os.path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import re
-import logging as logger
-import plistlib
 import sublime
 import sublime_plugin
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import webbrowser
+import plistlib
 from github import GitHubApi
+import logging as logger
 try:
     import xml.parsers.expat as expat
 except ImportError:
@@ -157,19 +154,16 @@ class OpenGistCommand(BaseGitHubCommand):
     def get_gists(self):
         try:
             self.gists = self.gistapi.list_gists(starred=self.starred)
-            sort_by, sort_reversed = self.settings.get("gist_list_sort_by", [None, False])
-            if sort_by:
-                self.gists = sorted(self.gists, key=lambda x: (x.get(sort_by) or "").lower(), reverse=sort_reversed)
-            gist_list_format = self.settings.get("gist_list_format")
+            format = self.settings.get("gist_list_format")
             packed_gists = []
             for idx, gist in enumerate(self.gists):
                 attribs = {"index": idx + 1,
                            "filename": list(gist["files"].keys())[0],
                            "description": gist["description"] or ''}
-                if isinstance(gist_list_format, list):
-                    item = [(format_str % attribs) for format_str in gist_list_format]
+                if isinstance(format, list):
+                    item = [(format_str % attribs) for format_str in format]
                 else:
-                    item = gist_list_format % attribs
+                    item = format % attribs
                 packed_gists.append(item)
 
             args = [packed_gists, self.on_done]
@@ -187,6 +181,7 @@ class OpenGistCommand(BaseGitHubCommand):
             return
         gist = self.gists[idx]
         filename = list(gist["files"].keys())[0]
+        filedata = gist["files"][filename]
         content = self.gistapi.get_gist(gist)
         if self.open_in_editor:
             new_view = self.view.window().new_file()
@@ -199,8 +194,8 @@ class OpenGistCommand(BaseGitHubCommand):
                     syntax_file = self.syntax_file_map[extension]
                     new_view.set_syntax_file(syntax_file)
                 except KeyError:
-                    logger.warn("no mapping for '%s'", extension)
-
+                    logger.warn("no mapping for '%s'" % extension)
+                    pass
             # insert the gist
             new_view.run_command("insert_text", {'text': content})
             new_view.set_name(filename)
@@ -229,7 +224,7 @@ class OpenGistCommand(BaseGitHubCommand):
                         for file_type in plist['fileTypes']:
                             syntax_file_map[file_type.lower()] = syntax_file
                 except expat.ExpatError:  # can't parse
-                    logger.warn("could not parse '%s'", syntax_file)
+                    logger.warn("could not parse '%s'" % syntax_file)
                 except KeyError:  # no file types
                     pass
 
@@ -243,7 +238,7 @@ class OpenGistCommand(BaseGitHubCommand):
                         for file_type in plist['fileTypes']:
                             syntax_file_map[file_type.lower()] = syntax_file
                 except expat.ExpatError:  # can't parse
-                    logger.warn("could not parse '%s'", syntax_file)
+                    logger.warn("could not parse '%s'" % syntax_file)
                 except KeyError:  # no file types
                     pass
 
@@ -287,7 +282,7 @@ class OpenGistInBrowserCommand(OpenGistCommand):
         if idx == -1:
             return
         gist = self.gists[idx]
-        sublime.active_window().run_command('open_url', {'url': gist['html_url']})
+        webbrowser.open(gist["html_url"])
 
 
 class OpenStarredGistInBrowserCommand(OpenGistInBrowserCommand):
@@ -460,7 +455,7 @@ if git:
             # Replace the "tld:" with "tld/"
             # https://github.com/bgreenlee/sublime-github/pull/49#commitcomment-3688312
             repo_url = re.sub(r'^(https?://[^/:]+):', r'\1/', repo_url)
-            repo_url = re.sub(r'\.git$', '', repo_url)
+            repo_url = re.sub('\.git$', '', repo_url)
             self.repo_url = repo_url
             self.run_command("git rev-parse --show-toplevel".split(), self.done_toplevel)
 
@@ -473,8 +468,7 @@ if git:
             absolute_path = absolute_path.replace('\\', '/')
             # we case-insensitive split because Windows
             # relative_path = re.split(re.escape(self.toplevel_path), absolute_path, re.IGNORECASE).pop()
-            # relative_path = absolute_path.replace(self.toplevel_path, '');
-            relative_path = absolute_path.replace(self.toplevel_path, '')
+            relative_path = absolute_path.replace(self.toplevel_path, '');
 
             line_nums = ""
             if self.allows_line_highlights:
@@ -511,7 +505,7 @@ class OpenRemoteUrlCommand(RemoteUrlCommand):
         super(OpenRemoteUrlCommand, self).run(edit)
 
     def on_done(self):
-        sublime.active_window().run_command('open_url', {'url': self.url})
+        webbrowser.open(self.url)
 
 
 class OpenRemoteUrlMasterCommand(OpenRemoteUrlCommand):
